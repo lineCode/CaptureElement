@@ -1,0 +1,13 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-CameraCaptureToDisk.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"C:\Users\User\Desktop\UnrealImageCapture-master\CaptureToDisk\Intermediate\Build\Win64\CaptureToDiskEditor\Development\Engine\SharedPCH.Engine.h.obj"
+"C:\Users\User\Desktop\UnrealImageCapture-master\CaptureToDisk\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\Module.CameraCaptureToDisk.cpp.obj"
+"C:\Users\User\Desktop\UnrealImageCapture-master\CaptureToDisk\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\Module.CameraCaptureToDisk.gen.cpp.obj"
+"C:\Users\User\Desktop\UnrealImageCapture-master\CaptureToDisk\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\Default.rc2.res"
+/OUT:"C:\Users\User\Desktop\UnrealImageCapture-master\CaptureToDisk\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\UnrealEditor-CameraCaptureToDisk.lib"

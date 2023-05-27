@@ -1,0 +1,43 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.CameraCaptureToDisk.cpp.obj": [
+			"CameraCaptureManager.cpp.obj",
+			"CameraCaptureToDisk.cpp.obj",
+			"Acceptor.cpp.obj",
+			"BufferReader.cpp.obj",
+			"BufferWriter.cpp.obj",
+			"EpollTaskScheduler.cpp.obj",
+			"EventLoop.cpp.obj",
+			"Logger.cpp.obj",
+			"MemoryManager.cpp.obj",
+			"NetInterface.cpp.obj",
+			"Pipe.cpp.obj",
+			"SelectTaskScheduler.cpp.obj",
+			"SocketUtil.cpp.obj",
+			"TaskScheduler.cpp.obj",
+			"TcpConnection.cpp.obj",
+			"TcpServer.cpp.obj",
+			"TcpSocket.cpp.obj",
+			"Timer.cpp.obj",
+			"Timestamp.cpp.obj",
+			"AACSource.cpp.obj",
+			"DigestAuthentication.cpp.obj",
+			"G711ASource.cpp.obj",
+			"H264Parser.cpp.obj",
+			"H264Source.cpp.obj",
+			"H265Source.cpp.obj",
+			"MediaSession.cpp.obj",
+			"RtpConnection.cpp.obj",
+			"RtspConnection.cpp.obj",
+			"RtspMessage.cpp.obj",
+			"RtspPusher.cpp.obj",
+			"RtspServer.cpp.obj",
+			"VP8Source.cpp.obj"
+		],
+		"Module.CameraCaptureToDisk.gen.cpp.obj": [
+			"CameraCaptureManager.gen.cpp.obj",
+			"CameraCaptureToDisk.init.gen.cpp.obj"
+		]
+	}
+}
