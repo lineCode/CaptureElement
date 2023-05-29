@@ -2,85 +2,66 @@
 
 #include "CameraCaptureManager.h"
 
-
-
-//#include "Engine.h"
 #include "Runtime/Engine/Classes/Engine/Engine.h"
-
 #include "Engine/SceneCapture2D.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/GameplayStatics.h"
 #include "ShowFlags.h"
-
 #include "Materials/Material.h"
-
 #include "RHICommandList.h"
 
 #include "ImageWrapper/Public/IImageWrapper.h"
 #include "ImageWrapper/Public/IImageWrapperModule.h"
 
 #include "ImageUtils.h"
-
 #include "Modules/ModuleManager.h"
-
 #include "Misc/FileHelper.h"
 
 #include  <filesystem>
 
 // Sets default values
-ACameraCaptureManager::ACameraCaptureManager()
+UCameraCaptureManager::UCameraCaptureManager()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-    PrimaryActorTick.TickInterval = 0.015;
+    PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.TickInterval = 0.015;
 }
 
-ACameraCaptureManager::~ACameraCaptureManager()
+UCameraCaptureManager::~UCameraCaptureManager()
 {
-    if (ScreenShotmaker_)
+}
+
+void UCameraCaptureManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    if (ScreenShotmaker.Get())
     {
-        ScreenShotmaker_->bStop = true;
-        delete ScreenShotmaker_;
+        ScreenShotmaker.Get()->bStop = true;
     }
 
-    if (RTPSmaker_)
+    if (RTPSmaker.Get())
     {
-        RTPSmaker_->bStop = true;
-        delete RTPSmaker_;
+        RTPSmaker.Get()->bStop = true;
     }
 
-    if (Videomaker_)
+    if (Videomaker.Get())
     {
-        Videomaker_->bStop = true;
-        delete Videomaker_;
+        Videomaker.Get()->bStop = true;
     }
 
-    if (FrameSender_)
-    {
-        FrameSender_->bStop = true;
-        delete FrameSender_;
-    }
+    Super::EndPlay(EndPlayReason);
 }
 
 // Called when the game starts or when spawned
-void ACameraCaptureManager::BeginPlay()
+void UCameraCaptureManager::BeginPlay()
 {
 	Super::BeginPlay();
-
-	//if(CaptureComponent)
-    //{ // nullptr check
-	//	//SetupCaptureComponent();
-	//} else
-    //{
-	//	UE_LOG(LogTemp, Error, TEXT("No CaptureComponent set!"));
-	//}
 }
 
 // Called every frame
-void ACameraCaptureManager::Tick(float DeltaTime)
+void UCameraCaptureManager::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	Super::Tick(DeltaTime);
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
     if (!CaptureComponent)
     {
@@ -112,8 +93,8 @@ void ACameraCaptureManager::Tick(float DeltaTime)
                 TArray64<uint8> ImgData2;
                 imageWrapper->GetRaw(ERGBFormat::BGRA, 8, ImgData2);
 
-                if (ScreenShotmaker_)
-                    ScreenShotmaker_->ImageCopy = ImgData2;
+                if (ScreenShotmaker.Get())
+                    ScreenShotmaker.Get()->ImageQueue.push(ImgData2);
 
                 // Delete the first element from RenderQueue
                 ScreenShotRequestQueue.Pop();
@@ -122,7 +103,7 @@ void ACameraCaptureManager::Tick(float DeltaTime)
         }
     }
 
-    if ((bMakeRTPS || bVideoRecord) && (RTPSmaker_ || Videomaker_))
+    if ((bMakeRTPS && RTPSmaker.Get()) || (bVideoRecord && Videomaker.Get()))
     {
         if (!RTPSRequestQueue.IsEmpty())
         {
@@ -145,11 +126,11 @@ void ACameraCaptureManager::Tick(float DeltaTime)
                     TArray64<uint8> ImgData2;
                     RTPSimageWrapper->GetRaw(ERGBFormat::BGRA, 8, ImgData2);
 
-                    if (FrameSender_ && bMakeRTPS)
-                        FrameSender_->ImageQueue.push(ImgData2);
+                    if (FrameSender && bMakeRTPS)
+                        FrameSender->ImageQueue.push(ImgData2);
 
-                    if (Videomaker_ && bVideoRecord)
-                        Videomaker_->ImageQueue.push(ImgData2);
+                    if (Videomaker.Get() && bVideoRecord)
+                        Videomaker.Get()->ImageQueue.push(ImgData2);
 
                     // Delete the first element from RenderQueue
                     RTPSRequestQueue.Pop();
@@ -161,27 +142,30 @@ void ACameraCaptureManager::Tick(float DeltaTime)
     }
 }
 
-void ACameraCaptureManager::StartVideoRecord(bool bState)
+void UCameraCaptureManager::StartVideoRecord(bool bState)
 {
     bVideoRecord = bState;
 
-    if (Videomaker_)
+    if (Videomaker.Get())
     {
-        Videomaker_->InitRecorder();
-        Videomaker_->bRecord = bState;
+        Videomaker.Get()->bRecord = bState;
+
+        if (bState)
+            Videomaker.Get()->InitRecorder();
     }
 }
 
-void ACameraCaptureManager::StartRTPS(bool bState)
+void UCameraCaptureManager::StartRTPS(bool bState)
 {
     bMakeRTPS = bState;
 
-    if (FrameSender_)
-        FrameSender_->bRecord = bState;
+    if (FrameSender)
+        FrameSender->bRecord = bState;
 }
 
-void ACameraCaptureManager::SetupCaptureComponent()
+void UCameraCaptureManager::SetupCaptureComponent(USceneCaptureComponent2D* captureComponent)
 {
+    CaptureComponent = captureComponent;
     FrameWidth = 1280;
     FrameHeight = 720;
 
@@ -201,36 +185,31 @@ void ACameraCaptureManager::SetupCaptureComponent()
     renderTarget2D->bGPUSharedFlag = true; // demand buffer on GPU
 
     // Assign RenderTarget
-    CaptureComponent->GetCaptureComponent2D()->TextureTarget = renderTarget2D;
+    CaptureComponent->TextureTarget = renderTarget2D;
     // Set Camera Properties
-    CaptureComponent->GetCaptureComponent2D()->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
-   // CaptureComponent->GetCaptureComponent2D()->TextureTarget->TargetGamma = GEngine->GetDisplayGamma();
+    CaptureComponent->CaptureSource = ESceneCaptureSource::SCS_FinalColorHDR;
+    // CaptureComponent->GetCaptureComponent2D()->TextureTarget->TargetGamma = GEngine->GetDisplayGamma();
     //CaptureComponent->GetCaptureComponent2D()->ShowFlags.SetTemporalAA(true);
-
-    // Assign PostProcess Material if assigned
-    if(PostProcessMaterial)
-    { // check nullptr
-        //CaptureComponent->GetCaptureComponent2D()->AddOrUpdateBlendable(PostProcessMaterial);
-        UE_LOG(LogTemp, Log, TEXT("PostProcessMaterial is assigend"));
-    } else 
-    {
-        UE_LOG(LogTemp, Log, TEXT("No PostProcessMaterial is assigend"));
-    }
+    
     UE_LOG(LogTemp, Warning, TEXT("Initialized RenderTarget!"));
 
     renderTarget2D->UpdateResourceImmediate();
 
-    if (!ScreenShotmaker_)
-        ScreenShotmaker_ = new AsyncSaveScreenShotmaker(this);
+    FString test = FPaths::ProjectSavedDir() + "capture";
+    FPaths::MakeStandardFilename(test);
+    std::filesystem::create_directory(TCHAR_TO_UTF8(*test));
 
-    if (!RTPSmaker_)
-        RTPSmaker_ = new AsyncRTSPserver(this);
+    if (!ScreenShotmaker.Get())
+        ScreenShotmaker = MakeUnique<AsyncSaveScreenShotmaker>(this);
 
-    if (!Videomaker_)
-        Videomaker_ = new AsyncVideomaker(this);
+    if (!RTPSmaker.Get())
+        RTPSmaker = MakeUnique<AsyncRTSPserver>(this);
+
+    if (!Videomaker.Get())
+        Videomaker = MakeUnique<AsyncVideomaker>(this);
 }
 
-void ACameraCaptureManager::MakeRTPSshot()
+void UCameraCaptureManager::MakeRTPSshot()
 {
     if (!IsValid(CaptureComponent))
     {
@@ -239,7 +218,7 @@ void ACameraCaptureManager::MakeRTPSshot()
     }
 
     // Get RenderConterxt
-    FTextureRenderTargetResource* renderTargetResource = CaptureComponent->GetCaptureComponent2D()->TextureTarget->GameThread_GetRenderTargetResource();
+    FTextureRenderTargetResource* renderTargetResource = CaptureComponent->TextureTarget->GameThread_GetRenderTargetResource();
 
     struct FReadSurfaceContext
     {
@@ -280,7 +259,7 @@ void ACameraCaptureManager::MakeRTPSshot()
 }
 
 
-void ACameraCaptureManager::MakeScreenShot()
+void UCameraCaptureManager::MakeScreenShot()
 {
     if(!IsValid(CaptureComponent))
     {
@@ -290,7 +269,7 @@ void ACameraCaptureManager::MakeScreenShot()
     UE_LOG(LogTemp, Warning, TEXT("Entering: CaptureNonBlocking"));
 
     // Get RenderConterxt
-    FTextureRenderTargetResource* renderTargetResource = CaptureComponent->GetCaptureComponent2D()->TextureTarget->GameThread_GetRenderTargetResource();
+    FTextureRenderTargetResource* renderTargetResource = CaptureComponent->TextureTarget->GameThread_GetRenderTargetResource();
     UE_LOG(LogTemp, Warning, TEXT("Got display gamma"));
     struct FReadSurfaceContext
     {
@@ -331,13 +310,11 @@ void ACameraCaptureManager::MakeScreenShot()
     renderRequest->RenderFence.BeginFence();
 }
 
-
-
 /*
 *******************************************************************
 */
 
-AsyncSaveScreenShotmaker::AsyncSaveScreenShotmaker(ACameraCaptureManager* manager)
+AsyncSaveScreenShotmaker::AsyncSaveScreenShotmaker(UCameraCaptureManager* manager)
 {
     Manager = manager;
     Thread = FRunnableThread::Create(this, TEXT("AsyncSaveScreenShotmaker"));
@@ -360,6 +337,7 @@ FString AsyncSaveScreenShotmaker::ToStringWithLeadingZeros(int32 Integer, int32 
     FString result = FString::FromInt(Integer);
     int32 stringSize = result.Len();
     int32 stringDelta = MaxDigits - stringSize;
+
     if(stringDelta < 0)
     {
         UE_LOG(LogTemp, Error, TEXT("MaxDigits of ImageCounter Overflow!"));
@@ -391,8 +369,10 @@ uint32 AsyncSaveScreenShotmaker::Run()
 
     while (!bStop)
     {
-        if(!ImageCopy.IsEmpty())
+        if(!ImageQueue.empty())
         {
+            ImageCopy = ImageQueue.front();
+            ImageQueue.pop();
             //Generate image name
             FileName = FPaths::ProjectSavedDir() + "capture/img" + "_" + ToStringWithLeadingZeros(ImgCounter, NumDigits);
             FileName += ".png"; // Add file ending
@@ -401,9 +381,7 @@ uint32 AsyncSaveScreenShotmaker::Run()
             int FrameHeight = 720;
 
             memcpy(wrappedImage.data, ImageCopy.GetData(), ImageCopy.Num());
-
             cv::split(wrappedImage, channels);
-
             vectorToCombine.push_back(channels[0]);
             vectorToCombine.push_back(channels[1]);
             vectorToCombine.push_back(channels[2]);
@@ -412,14 +390,13 @@ uint32 AsyncSaveScreenShotmaker::Run()
             cv::imwrite(TCHAR_TO_ANSI(*FileName), rawImage);
 
             vectorToCombine.clear();
-            ImageCopy.Empty();
             ImgCounter++;
         }
     }
     return 0;
 }
 
-AsyncRTSPserver::AsyncRTSPserver(ACameraCaptureManager* manager)
+AsyncRTSPserver::AsyncRTSPserver(UCameraCaptureManager* manager)
 {
     Manager = manager;
     Thread = FRunnableThread::Create(this, TEXT("AsyncRTPSmaker"));
@@ -472,8 +449,8 @@ bool AsyncRTSPserver::Init()
 
     session_id = server->AddSession(session);
 
-    FrameSender = new AsyncRTSPframeSender(server.get(), session_id);
-    Manager->FrameSender_ = FrameSender;
+    FrameSender = MakeUnique<AsyncRTSPframeSender>(server, session_id);
+    Manager->FrameSender = FrameSender.Get();
 
     return true;
 }
@@ -491,7 +468,7 @@ uint32 AsyncRTSPserver::Run()
     return 0;
 }
 
-AsyncRTSPframeSender::AsyncRTSPframeSender(xop::RtspServer* server, xop::MediaSessionId session_id)
+AsyncRTSPframeSender::AsyncRTSPframeSender(std::shared_ptr<xop::RtspServer> server, xop::MediaSessionId session_id)
 {
     Server = server;
     Session_id = session_id;
@@ -513,49 +490,6 @@ AsyncRTSPframeSender::~AsyncRTSPframeSender()
 
 bool AsyncRTSPframeSender::Init()
 {
-    /*
-    rv = WelsCreateSVCEncoder(&encoder_);
-    assert(0 == rv);
-    assert(encoder_ != nullptr);
-
-    FString filename = FPaths::ProjectSavedDir() + "capture/test.png";
-    FPaths::MakeStandardFilename(filename);
-    rawImage = cv::imread(TCHAR_TO_UTF8(*filename), cv::IMREAD_COLOR);
-
-    if (rawImage.empty())
-    {
-        rawImage = cv::Mat(FrameHeight, FrameWidth, CV_8UC(3), cv::Scalar(0));
-    }
-    cv::resize(rawImage, rawImage, cv::Size(FrameWidth, FrameHeight));
-
-    memset(&param, 0, sizeof(SEncParamBase));
-    param.iUsageType = CAMERA_VIDEO_REAL_TIME;
-    param.fMaxFrameRate = 40;
-    param.iPicWidth = FrameWidth;
-    param.iPicHeight = FrameHeight;
-    param.iTargetBitrate = 1000000;
-    encoder_->Initialize(&param);
-
-    memset(&info, 0, sizeof(SFrameBSInfo));
-    memset(&pic, 0, sizeof(SSourcePicture));
-    pic.iPicWidth = FrameWidth;
-    pic.iPicHeight = FrameHeight;
-    pic.iColorFormat = videoFormatI420;
-
-    cv::cvtColor(rawImage, imageYuv, cv::COLOR_BGR2YUV);
-    cv::split(imageYuv, imageYuvCh);
-    cv::resize(imageYuv, imageYuvMini, cv::Size(FrameWidth / 2, FrameHeight / 2));
-    cv::split(imageYuvMini, imageYuvMiniCh);
-    pic.iStride[0] = imageYuvCh[0].step;
-    pic.iStride[1] = imageYuvMiniCh[1].step;
-    pic.iStride[2] = imageYuvMiniCh[2].step;
-    pic.pData[0] = imageYuvCh[0].data;
-    pic.pData[1] = imageYuvMiniCh[1].data;
-    pic.pData[2] = imageYuvMiniCh[2].data;
-
-    rv = encoder_->EncodeFrame(&pic, &info);
-    assert(rv == cmResultSuccess);
-    */
     wrappedImage = cv::Mat(FrameHeight, FrameWidth, CV_8UC(4), cv::Scalar(0));
     rawImage = cv::Mat(FrameHeight, FrameWidth, CV_8UC(3), cv::Scalar(0));
 
@@ -636,7 +570,7 @@ uint32 AsyncRTSPframeSender::Run()
                         --iNalIdx;
                     } while (iNalIdx >= 0);
 
-                    unsigned char* outBuf = pLayerBsInfo->pBsBuf;
+                    uint8_t* outBuf = pLayerBsInfo->pBsBuf;
 
                     xop::AVFrame videoFrame = { 0 };
                     videoFrame.type = 0;
@@ -646,7 +580,7 @@ uint32 AsyncRTSPframeSender::Run()
                     memcpy(videoFrame.buffer.get(), outBuf, videoFrame.size);
 
                     if (!bStop)
-                        Server->PushFrame(Session_id, xop::channel_0, videoFrame);
+                        Server.get()->PushFrame(Session_id, xop::channel_0, videoFrame);
                 }
             }
 
@@ -656,12 +590,20 @@ uint32 AsyncRTSPframeSender::Run()
                 WelsDestroySVCEncoder(encoder_);
             }
         }
+        else
+        {
+            if (!ImageQueue.empty())
+            {
+                decltype(ImageQueue) empty{};
+                std::swap(ImageQueue, empty);
+            }
+        }
     }
 
     return 0;
 }
 
-AsyncVideomaker::AsyncVideomaker(ACameraCaptureManager* manager)
+AsyncVideomaker::AsyncVideomaker(UCameraCaptureManager* manager)
 {
     Manager = manager;
     Thread = FRunnableThread::Create(this, TEXT("AsyncVideomaker"));
@@ -681,9 +623,6 @@ AsyncVideomaker::~AsyncVideomaker()
 
 void AsyncVideomaker::InitRecorder()
 {
-    if (video_.isOpened())
-        video_.release();
-
     int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
     double fps = 30.0;
     FString filename = FPaths::ProjectSavedDir() + "capture/";
@@ -714,7 +653,7 @@ uint32 AsyncVideomaker::Run()
     {
         if (bRecord)
         {
-            if (!ImageQueue.empty())
+            if (!ImageQueue.empty() && video_.isOpened())
             {
                 ImageCopy = ImageQueue.front();
                 ImageQueue.pop();
@@ -728,6 +667,17 @@ uint32 AsyncVideomaker::Run()
 
                 video_.write(rawImage);
                 vectorToCombine.clear();
+            }
+        }
+        else
+        {
+            if (video_.isOpened())
+                video_.release();
+
+            if (!ImageQueue.empty())
+            {
+                decltype(ImageQueue) empty{};
+                std::swap(ImageQueue, empty);
             }
         }
     }

@@ -6,8 +6,8 @@
 /NAME:"UnrealEditor-CameraCaptureToDisk.dll"
 /IGNORE:4221
 /NODEFAULTLIB
-"C:\Users\User\Desktop\UnrealImageCapture-master\CaptureToDisk\Intermediate\Build\Win64\CaptureToDiskEditor\Development\Engine\SharedPCH.Engine.h.obj"
-"C:\Users\User\Desktop\UnrealImageCapture-master\CaptureToDisk\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\Module.CameraCaptureToDisk.cpp.obj"
-"C:\Users\User\Desktop\UnrealImageCapture-master\CaptureToDisk\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\Module.CameraCaptureToDisk.gen.cpp.obj"
-"C:\Users\User\Desktop\UnrealImageCapture-master\CaptureToDisk\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\Default.rc2.res"
-/OUT:"C:\Users\User\Desktop\UnrealImageCapture-master\CaptureToDisk\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\UnrealEditor-CameraCaptureToDisk.lib"
+"D:\Repos\MyProject\Intermediate\Build\Win64\MyProjectEditor\Development\Engine\SharedPCH.Engine.ShadowErrors.h.obj"
+"D:\Repos\MyProject\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\Module.CameraCaptureToDisk.cpp.obj"
+"D:\Repos\MyProject\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\Module.CameraCaptureToDisk.gen.cpp.obj"
+"D:\Repos\MyProject\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\Default.rc2.res"
+/OUT:"D:\Repos\MyProject\Plugins\CameraCaptureToDisk\Intermediate\Build\Win64\UnrealEditor\Development\CameraCaptureToDisk\UnrealEditor-CameraCaptureToDisk.lib"
