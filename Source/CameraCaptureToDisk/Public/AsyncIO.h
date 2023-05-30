@@ -17,28 +17,28 @@
 
 namespace AME
 {
-	class AsyncIO;
+	class IAsync;
 }
 
 class UCameraCaptureManager;
 
-class AME::AsyncIO : public FRunnable
+class AME::IAsync : public FRunnable
 {
 public:
-	AsyncIO(UCameraCaptureManager* manager) : Manager(manager) {};
-	virtual ~AsyncIO() override {};
+	IAsync(UCameraCaptureManager* manager) : Manager(manager) {};
+	virtual ~IAsync() override;
 
 	std::queue<TArray64<uint8>> ImageQueue {};
 	volatile bool bStop = false;
-	volatile bool bRecord = false;
 
 	virtual bool Init() override; // Do your setup here, allocate memory, ect. 
 	virtual uint32 Run() override = 0;  // Main data processing happens here
-	virtual void Stop() override = 0; // Clean up any memory you allocated here
+	virtual void Stop() override; // Clean up any memory you allocated here
 
 	std::condition_variable cv;
 
 protected:
+	FRunnableThread* Thread;
 	UCameraCaptureManager* Manager;
 	FString FileName = "";
 	cv::Mat rawImage;

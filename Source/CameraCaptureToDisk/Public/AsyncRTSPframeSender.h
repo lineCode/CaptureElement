@@ -9,20 +9,18 @@ namespace AME
     class AsyncRTSPframeSender;
 }
 
-class AME::AsyncRTSPframeSender : public FRunnable
+class AME::AsyncRTSPframeSender : public AME::IAsync
 {
 public:
-    explicit AsyncRTSPframeSender(std::shared_ptr<xop::RtspServer> server, xop::MediaSessionId session_id);
-    virtual ~AsyncRTSPframeSender() override;
-    mutable std::queue<TArray64<uint8>> ImageQueue{};
+    explicit AsyncRTSPframeSender(std::shared_ptr<xop::RtspServer> server, xop::MediaSessionId session_id, UCameraCaptureManager* manager);
+    virtual ~AsyncRTSPframeSender() override = default;
 
 public:
-    mutable bool bStop = false;
-    mutable bool bRecord = false;
-
     virtual bool Init() override; // Do your setup here, allocate memory, ect.
     virtual uint32 Run() override; // Main data processing happens here
     virtual void Stop() override; // Clean up any memory you allocated here
+
+    volatile bool bRecord = false;
 
 protected:
     std::shared_ptr<xop::RtspServer> Server;
@@ -36,15 +34,7 @@ protected:
     SEncParamBase param;
 
     int rv;
-    std::vector<cv::Mat> vectorToCombine;
-    cv::Mat channels[4];
-    cv::Mat rawImage;
+
     cv::Mat imageYuv, imageYuvMini;
     cv::Mat imageYuvCh[3], imageYuvMiniCh[3];
-
-    TArray64<uint8> ImageCopy{};
-    cv::Mat wrappedImage;
-
-    int FrameWidth = 1280;
-    int FrameHeight = 720;
 };

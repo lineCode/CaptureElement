@@ -9,12 +9,12 @@ namespace AME
     class AsyncRTSPframeSender;
 }
 
-class AME::AsyncRTSPserver : public FRunnable
+class AME::AsyncRTSPserver : public AME::IAsync
 {
 
 public:
     explicit AsyncRTSPserver(UCameraCaptureManager* manager);
-    virtual ~AsyncRTSPserver() override;
+    virtual ~AsyncRTSPserver() override = default;
 
 public:
     virtual bool Init() override; // Do your setup here, allocate memory, ect.
@@ -30,7 +30,4 @@ protected:
     xop::MediaSession* session;
 
     TUniquePtr<AME::AsyncRTSPframeSender> FrameSender;
-
-    UCameraCaptureManager* Manager;
-    FRunnableThread* Thread;
 };

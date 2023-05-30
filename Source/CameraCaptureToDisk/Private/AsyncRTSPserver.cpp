@@ -2,22 +2,9 @@
 #include "CameraCaptureManager.h"
 
 
-AME::AsyncRTSPserver::AsyncRTSPserver(UCameraCaptureManager* manager)
+AME::AsyncRTSPserver::AsyncRTSPserver(UCameraCaptureManager* manager) : AME::IAsync(manager)
 {
-    Manager = manager;
     Thread = FRunnableThread::Create(this, TEXT("AsyncRTPSmaker"));
-}
-
-AME::AsyncRTSPserver::~AsyncRTSPserver()
-{
-    if (Thread)
-    {
-        bStop = true;
-        // Kill() is a blocking call, it waits for the thread to finish.
-        // Hopefully that doesn't take too long
-        Thread->Kill();
-        delete Thread;
-    }
 }
 
 bool AME::AsyncRTSPserver::Init()
@@ -55,7 +42,7 @@ bool AME::AsyncRTSPserver::Init()
 
     session_id = server->AddSession(session);
 
-    FrameSender = MakeUnique<AME::AsyncRTSPframeSender>(server, session_id);
+    FrameSender = MakeUnique<AME::AsyncRTSPframeSender>(server, session_id, Manager);
     Manager->FrameSender = FrameSender.Get();
 
     return true;
@@ -63,13 +50,18 @@ bool AME::AsyncRTSPserver::Init()
 
 void AME::AsyncRTSPserver::Stop()
 {
-    bStop = true;
+    AME::IAsync::Stop();
+
+    delete session;
 }
 
 uint32 AME::AsyncRTSPserver::Run()
 {
+    std::unique_lock<std::mutex> lock(mutex);
+
     while (!bStop)
     {
+        cv.wait(lock, [this] {return bStop; });
     }
     return 0;
 }

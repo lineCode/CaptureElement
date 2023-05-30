@@ -1,29 +1,14 @@
 #include "AsyncRTSPframeSender.h"
 
-AME::AsyncRTSPframeSender::AsyncRTSPframeSender(std::shared_ptr<xop::RtspServer> server, xop::MediaSessionId session_id)
+AME::AsyncRTSPframeSender::AsyncRTSPframeSender(std::shared_ptr<xop::RtspServer> server, xop::MediaSessionId session_id, UCameraCaptureManager* manager) 
+    : AME::IAsync(manager), Server(server), Session_id(session_id)
 {
-    Server = server;
-    Session_id = session_id;
-
     Thread = FRunnableThread::Create(this, TEXT("AsyncRTSPframeSender"));
-}
-
-AME::AsyncRTSPframeSender::~AsyncRTSPframeSender()
-{
-    if (Thread)
-    {
-        bStop = true;
-        // Kill() is a blocking call, it waits for the thread to finish.
-        // Hopefully that doesn't take too long
-        Thread->Kill();
-        delete Thread;
-    }
 }
 
 bool AME::AsyncRTSPframeSender::Init()
 {
-    wrappedImage = cv::Mat(FrameHeight, FrameWidth, CV_8UC(4), cv::Scalar(0));
-    rawImage = cv::Mat(FrameHeight, FrameWidth, CV_8UC(3), cv::Scalar(0));
+    AME::IAsync::Init();
 
     memset(&param, 0, sizeof(SEncParamBase));
     param.iUsageType = CAMERA_VIDEO_REAL_TIME;
@@ -43,28 +28,23 @@ bool AME::AsyncRTSPframeSender::Init()
 
 void AME::AsyncRTSPframeSender::Stop()
 {
-    bStop = true;
     bRecord = false;
+
+    AME::IAsync::Stop();
 }
 
 uint32 AME::AsyncRTSPframeSender::Run()
 {
+    std::unique_lock<std::mutex> lock(mutex);
+
     while (!bStop)
     {
         if (bRecord)
         {
             if (!ImageQueue.empty())
             {
-                ImageCopy = ImageQueue.front();
+                RGBAtoRGB(ImageQueue.front(), rawImage);
                 ImageQueue.pop();
-
-                memcpy(wrappedImage.data, ImageCopy.GetData(), ImageCopy.Num());
-                cv::split(wrappedImage, channels);
-                vectorToCombine.push_back(channels[0]);
-                vectorToCombine.push_back(channels[1]);
-                vectorToCombine.push_back(channels[2]);
-                cv::merge(vectorToCombine, rawImage);
-                vectorToCombine.clear();
             }
 
             rv = WelsCreateSVCEncoder(&encoder_);
@@ -85,6 +65,7 @@ uint32 AME::AsyncRTSPframeSender::Run()
             if (rv != cmResultSuccess)
             {
                 UE_LOG(LogTemp, Error, TEXT("rv failed"));
+                continue;
             }
 
             if (info.eFrameType != videoFrameTypeSkip /*&& cbk != nullptr*/)
@@ -129,6 +110,8 @@ uint32 AME::AsyncRTSPframeSender::Run()
                 decltype(ImageQueue) empty{};
                 std::swap(ImageQueue, empty);
             }
+
+            cv.wait(lock, [this] {return bStop || bRecord; });
         }
     }
 

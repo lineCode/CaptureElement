@@ -94,7 +94,10 @@ void UCameraCaptureManager::TickComponent(float DeltaTime, ELevelTick TickType, 
                 imageWrapper->GetRaw(ERGBFormat::BGRA, 8, ImgData2);
 
                 if (ScreenShotmaker.Get())
+                {
                     ScreenShotmaker.Get()->ImageQueue.push(ImgData2);
+                    ScreenShotmaker.Get()->cv.notify_one();
+                }
 
                 // Delete the first element from RenderQueue
                 ScreenShotRequestQueue.Pop();
@@ -130,7 +133,9 @@ void UCameraCaptureManager::TickComponent(float DeltaTime, ELevelTick TickType, 
                         FrameSender->ImageQueue.push(ImgData2);
 
                     if (Videomaker.Get() && bVideoRecord)
+                    {
                         Videomaker.Get()->ImageQueue.push(ImgData2);
+                    }
 
                     // Delete the first element from RenderQueue
                     RTPSRequestQueue.Pop();
@@ -148,10 +153,7 @@ void UCameraCaptureManager::StartVideoRecord(bool bState)
 
     if (Videomaker.Get())
     {
-        Videomaker.Get()->bRecord = bState;
-
-        if (bState)
-            Videomaker.Get()->InitRecorder();
+        Videomaker.Get()->InitRecorder(bState);
     }
 }
 
@@ -160,7 +162,10 @@ void UCameraCaptureManager::StartRTPS(bool bState)
     bMakeRTPS = bState;
 
     if (FrameSender)
+    {
         FrameSender->bRecord = bState;
+        FrameSender->cv.notify_one();
+    }
 }
 
 void UCameraCaptureManager::SetupCaptureComponent(USceneCaptureComponent2D* captureComponent)

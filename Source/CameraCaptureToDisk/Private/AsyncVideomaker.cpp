@@ -1,81 +1,76 @@
 #include "AsyncVideomaker.h"
 
-AME::AsyncVideomaker::AsyncVideomaker(UCameraCaptureManager* manager)
+AME::AsyncVideomaker::AsyncVideomaker(UCameraCaptureManager* manager) : AME::IAsync(manager)
 {
-    Manager = manager;
     Thread = FRunnableThread::Create(this, TEXT("AsyncVideomaker"));
 }
 
-AME::AsyncVideomaker::~AsyncVideomaker()
+void AME::AsyncVideomaker::InitRecorder(bool state)
 {
-    if (Thread)
+    if (state)
     {
-        bStop = true;
-        // Kill() is a blocking call, it waits for the thread to finish.
-        // Hopefully that doesn't take too long
-        Thread->Kill();
-        delete Thread;
+        if (video_.isOpened())
+            video_.release();
+
+        int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+        double fps = 55.0;
+
+        FileName = FileNameWithLeadingZeros("vid_", ".avi");
+        FPaths::MakeStandardFilename(FileName);
+
+        bool status = video_.open(std::string(TCHAR_TO_UTF8(*FileName)), codec, fps, cv::Size(1280, 720));
+        UE_LOG(LogTemp, Warning, TEXT("video file path: %s"), *FileName);
+
+        bRecord = true;
+
+        cv.notify_one();
     }
-}
+    else
+    {
+        bRecord = false;
 
-void AME::AsyncVideomaker::InitRecorder()
-{
-    int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
-    double fps = 30.0;
-    FString filename = FPaths::ProjectSavedDir() + "capture/";
+        if (video_.isOpened())
+            video_.release();
 
-    filename.Append(FDateTime::Now().ToString());
-    filename.Append(".avi");
-    FPaths::MakeStandardFilename(filename);
-    bool status = video_.open(std::string(TCHAR_TO_UTF8(*filename)), codec, fps, cv::Size(1280, 720));
-    UE_LOG(LogTemp, Warning, TEXT("video file path: %s"), *filename);
+        if (!ImageQueue.empty())
+        {
+            decltype(ImageQueue) empty{};
+            std::swap(ImageQueue, empty);
+        }
+    }
 }
 
 bool AME::AsyncVideomaker::Init()
 {
-    rawImage = cv::Mat(FrameHeight, FrameWidth, CV_8UC(3), cv::Scalar(0));
-    wrappedImage = cv::Mat(FrameHeight, FrameWidth, CV_8UC(4), cv::Scalar(0));
-    return true;
+    return AME::IAsync::Init();
 }
 
 void AME::AsyncVideomaker::Stop()
 {
-    bStop = true;
     bRecord = false;
+
+    AME::IAsync::Stop();
 }
 
 uint32 AME::AsyncVideomaker::Run()
 {
+    std::unique_lock<std::mutex> lock(mutex);
+
     while (!bStop)
     {
         if (bRecord)
         {
             if (!ImageQueue.empty() && video_.isOpened())
             {
-                ImageCopy = ImageQueue.front();
+                RGBAtoRGB(ImageQueue.front(), rawImage);
                 ImageQueue.pop();
 
-                memcpy(wrappedImage.data, ImageCopy.GetData(), ImageCopy.Num());
-                cv::split(wrappedImage, channels);
-                vectorToCombine.push_back(channels[0]);
-                vectorToCombine.push_back(channels[1]);
-                vectorToCombine.push_back(channels[2]);
-                cv::merge(vectorToCombine, rawImage);
-
                 video_.write(rawImage);
-                vectorToCombine.clear();
             }
         }
         else
         {
-            if (video_.isOpened())
-                video_.release();
-
-            if (!ImageQueue.empty())
-            {
-                decltype(ImageQueue) empty{};
-                std::swap(ImageQueue, empty);
-            }
+            cv.wait(lock, [this] {return bStop || bRecord; });
         }
     }
     return 0;
