@@ -68,7 +68,5 @@ public class CameraCaptureToDisk : ModuleRules
 				// ... add any modules that your module loads dynamically here ...
 			}
 			);
-		//PublicAdditionalLibraries.Add("Source\CaptureToDisk\Private\openh264\lib\openh264.lib"));
-		//PublicIncludePaths.Add("Source\CaptureToDisk\Private\openh264\include");
 	}
 }
