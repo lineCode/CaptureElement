@@ -1,9 +1,21 @@
 #include "AsyncSaveScreenShotmaker.h"
 
 
-AME::AsyncSaveScreenShotmaker::AsyncSaveScreenShotmaker(UCameraCaptureManager* manager) : AME::IAsync(manager)
+AME::AsyncSaveScreenShotmaker::AsyncSaveScreenShotmaker()
 {
     Thread = FRunnableThread::Create(this, TEXT("AsyncSaveScreenShotmaker"));
+}
+
+AME::AsyncSaveScreenShotmaker::~AsyncSaveScreenShotmaker()
+{
+    if (Thread)
+    {
+        // Kill() is a blocking call, it waits for the thread to finish (call Stop() func).
+        // Hopefully that doesn't take too long
+        Thread->Kill();
+        Thread->WaitForCompletion();
+        //delete Thread;
+    }
 }
 
 bool AME::AsyncSaveScreenShotmaker::Init()

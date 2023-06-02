@@ -1,13 +1,27 @@
 #include "AsyncRTSPframeSender.h"
 
-AME::AsyncRTSPframeSender::AsyncRTSPframeSender(std::shared_ptr<xop::RtspServer> server, xop::MediaSessionId session_id, UCameraCaptureManager* manager) 
-    : AME::IAsync(manager), Server(server), Session_id(session_id)
+AME::AsyncRTSPframeSender::AsyncRTSPframeSender()
 {
     Thread = FRunnableThread::Create(this, TEXT("AsyncRTSPframeSender"));
 }
 
-bool AME::AsyncRTSPframeSender::Init()
+AME::AsyncRTSPframeSender::~AsyncRTSPframeSender()
 {
+    if (Thread)
+    {
+        // Kill() is a blocking call, it waits for the thread to finish (call Stop() func).
+        // Hopefully that doesn't take too long
+        Thread->Kill();
+        Thread->WaitForCompletion();
+        //delete Thread;
+    }
+}
+
+void AME::AsyncRTSPframeSender::InitVars(std::shared_ptr<xop::RtspServer> server, xop::MediaSessionId& session_id)
+{
+    Server = server; 
+    Session_id = session_id;
+
     AME::IAsync::Init();
 
     memset(&param, 0, sizeof(SEncParamBase));
@@ -22,14 +36,16 @@ bool AME::AsyncRTSPframeSender::Init()
     pic.iPicWidth = FrameWidth;
     pic.iPicHeight = FrameHeight;
     pic.iColorFormat = videoFormatI420;
+}
 
+bool AME::AsyncRTSPframeSender::Init()
+{
     return true;
 }
 
 void AME::AsyncRTSPframeSender::Stop()
 {
     bRecord = false;
-
     AME::IAsync::Stop();
 }
 
@@ -74,9 +90,9 @@ uint32 AME::AsyncRTSPframeSender::Run()
                 for (int iLayer = 0; iLayer < info.iLayerNum; iLayer++)
                 {
                     SLayerBSInfo* pLayerBsInfo = &info.sLayerInfo[iLayer];
-
                     int iLayerSize = 0;
                     int iNalIdx = pLayerBsInfo->iNalCount - 1;
+
                     do
                     {
                         iLayerSize += pLayerBsInfo->pNalLengthInByte[iNalIdx];
@@ -84,7 +100,6 @@ uint32 AME::AsyncRTSPframeSender::Run()
                     } while (iNalIdx >= 0);
 
                     uint8_t* outBuf = pLayerBsInfo->pBsBuf;
-
                     xop::AVFrame videoFrame = { 0 };
                     videoFrame.type = 0;
                     videoFrame.size = iLayerSize;
@@ -105,6 +120,12 @@ uint32 AME::AsyncRTSPframeSender::Run()
         }
         else
         {
+            if (encoder_)
+            {
+                encoder_->Uninitialize();
+                WelsDestroySVCEncoder(encoder_);
+            }
+
             if (!ImageQueue.empty())
             {
                 decltype(ImageQueue) empty{};

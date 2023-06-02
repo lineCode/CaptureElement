@@ -11,8 +11,8 @@ class AME::AsyncSaveScreenShotmaker : public AME::IAsync
 {
 
 public:
-    explicit AsyncSaveScreenShotmaker(UCameraCaptureManager* manager);
-    virtual ~AsyncSaveScreenShotmaker() override = default;
+    explicit AsyncSaveScreenShotmaker();
+    virtual ~AsyncSaveScreenShotmaker() override;
 
 public:
     virtual bool Init() override; 

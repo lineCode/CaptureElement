@@ -1,33 +1,27 @@
 #pragma once
 
-#include "AsyncIO.h"
 #include "xop/RtspServer.h"
+#include "AsyncRTSPframeSender.h"
 
-namespace AME
+#include "AsyncRTSPserver.generated.h"
+
+UCLASS(Blueprintable)
+class UAsyncRTSPserver : public UObject
 {
-    class AsyncRTSPserver;
-    class AsyncRTSPframeSender;
-}
-
-class AME::AsyncRTSPserver : public AME::IAsync
-{
-
+    GENERATED_BODY()
 public:
-    explicit AsyncRTSPserver(UCameraCaptureManager* manager);
-    virtual ~AsyncRTSPserver() override = default;
+    explicit UAsyncRTSPserver();
+    virtual ~UAsyncRTSPserver() override;
 
-public:
-    virtual bool Init() override; // Do your setup here, allocate memory, ect.
-    virtual uint32 Run() override; // Main data processing happens here
-    virtual void Stop() override; // Clean up any memory you allocated here
+    void HelpInitFrameSender(AME::AsyncRTSPframeSender* FrameSender);
 
-    mutable bool bStop = false;
+    UFUNCTION(BlueprintPure, Category = "RTSPserver")
+    static UAsyncRTSPserver* CreateRTSPserver();
 
 protected:
-    std::shared_ptr<xop::RtspServer> server;
-    std::shared_ptr<xop::EventLoop> event_loop;
-    xop::MediaSessionId session_id;
-    xop::MediaSession* session;
-
-    TUniquePtr<AME::AsyncRTSPframeSender> FrameSender;
+    void Init(); // Do your setup here, allocate memory, ect.
+    std::shared_ptr<xop::RtspServer> Server;
+    std::shared_ptr<xop::EventLoop> Event_loop;
+    xop::MediaSessionId Session_id;
+    xop::MediaSession* Session;
 };

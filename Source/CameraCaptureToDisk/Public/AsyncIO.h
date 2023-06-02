@@ -25,7 +25,7 @@ class UCameraCaptureManager;
 class AME::IAsync : public FRunnable
 {
 public:
-	IAsync(UCameraCaptureManager* manager) : Manager(manager) {};
+	explicit IAsync() = default;
 	virtual ~IAsync() override;
 
 	std::queue<TArray64<uint8>> ImageQueue {};
@@ -39,7 +39,6 @@ public:
 
 protected:
 	FRunnableThread* Thread;
-	UCameraCaptureManager* Manager;
 	FString FileName = "";
 	cv::Mat rawImage;
 	std::mutex mutex;

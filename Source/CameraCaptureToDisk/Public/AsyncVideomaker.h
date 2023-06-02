@@ -10,8 +10,8 @@ namespace AME
 class AME::AsyncVideomaker : public AME::IAsync
 {
 public:
-    explicit AsyncVideomaker(UCameraCaptureManager* manager);
-    virtual ~AsyncVideomaker() override = default;
+    explicit AsyncVideomaker();
+    virtual ~AsyncVideomaker() override;
 
 public:
     void InitRecorder(bool state);

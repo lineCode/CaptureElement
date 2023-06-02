@@ -1,8 +1,20 @@
 #include "AsyncVideomaker.h"
 
-AME::AsyncVideomaker::AsyncVideomaker(UCameraCaptureManager* manager) : AME::IAsync(manager)
+AME::AsyncVideomaker::AsyncVideomaker()
 {
     Thread = FRunnableThread::Create(this, TEXT("AsyncVideomaker"));
+}
+
+AME::AsyncVideomaker::~AsyncVideomaker()
+{
+    if (Thread)
+    {
+        // Kill() is a blocking call, it waits for the thread to finish (call Stop() func).
+        // Hopefully that doesn't take too long
+        Thread->Kill();
+        Thread->WaitForCompletion();
+        //delete Thread;
+    }
 }
 
 void AME::AsyncVideomaker::InitRecorder(bool state)
@@ -48,6 +60,7 @@ bool AME::AsyncVideomaker::Init()
 void AME::AsyncVideomaker::Stop()
 {
     bRecord = false;
+    InitRecorder(false);
 
     AME::IAsync::Stop();
 }

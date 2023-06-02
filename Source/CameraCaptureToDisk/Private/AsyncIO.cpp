@@ -2,13 +2,7 @@
 
 AME::IAsync::~IAsync()
 {
-    if (Thread)
-    {
-        // Kill() is a blocking call, it waits for the thread to finish (call Stop() func).
-        // Hopefully that doesn't take too long
-        Thread->Kill();
-        delete Thread;
-    }
+    
 }
 
 bool AME::IAsync::Init()

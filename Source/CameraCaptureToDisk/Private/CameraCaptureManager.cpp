@@ -18,6 +18,8 @@
 #include "Modules/ModuleManager.h"
 #include "Misc/FileHelper.h"
 
+#include "AsyncRTSPserverHolderInterface.h"
+
 #include  <filesystem>
 
 // Sets default values
@@ -34,21 +36,6 @@ UCameraCaptureManager::~UCameraCaptureManager()
 
 void UCameraCaptureManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    if (ScreenShotmaker.Get())
-    {
-        ScreenShotmaker.Get()->bStop = true;
-    }
-
-    if (RTPSmaker.Get())
-    {
-        RTPSmaker.Get()->bStop = true;
-    }
-
-    if (Videomaker.Get())
-    {
-        Videomaker.Get()->bStop = true;
-    }
-
     Super::EndPlay(EndPlayReason);
 }
 
@@ -106,7 +93,7 @@ void UCameraCaptureManager::TickComponent(float DeltaTime, ELevelTick TickType, 
         }
     }
 
-    if ((bMakeRTPS && RTPSmaker.Get()) || (bVideoRecord && Videomaker.Get()))
+    if ((bMakeRTPS) || (bVideoRecord && Videomaker.Get()))
     {
         if (!RTPSRequestQueue.IsEmpty())
         {
@@ -203,15 +190,26 @@ void UCameraCaptureManager::SetupCaptureComponent(USceneCaptureComponent2D* capt
     FString test = FPaths::ProjectSavedDir() + "capture";
     FPaths::MakeStandardFilename(test);
     std::filesystem::create_directory(TCHAR_TO_UTF8(*test));
+    
+    ScreenShotmaker = MakeUnique<AME::AsyncSaveScreenShotmaker>();
+    Videomaker = MakeUnique<AME::AsyncVideomaker>();
+    FrameSender = MakeUnique<AME::AsyncRTSPframeSender>();
 
-    if (!ScreenShotmaker.Get())
-        ScreenShotmaker = MakeUnique<AME::AsyncSaveScreenShotmaker>(this);
+    if (UGameplayStatics::GetGameInstance(GetWorld())->Implements<URTSPserverHolder>())
+    {
+        IRTSPserverHolder* ReactingObject = Cast<IRTSPserverHolder>(UGameplayStatics::GetGameInstance(GetWorld()));
+        RTSPserver = ReactingObject->Execute_IGetRTSPserver(UGameplayStatics::GetGameInstance(GetWorld()));
 
-    if (!RTPSmaker.Get())
-        RTPSmaker = MakeUnique<AME::AsyncRTSPserver>(this);
+        if (RTSPserver == nullptr)
+            RTSPserver = CreateDefaultSubobject<UAsyncRTSPserver>("RTSPserver");
+    }
+    else
+        RTSPserver = CreateDefaultSubobject<UAsyncRTSPserver>("RTSPserver");
 
-    if (!Videomaker.Get())
-        Videomaker = MakeUnique<AME::AsyncVideomaker>(this);
+    if (RTSPserver != nullptr)
+        RTSPserver->HelpInitFrameSender(FrameSender.Get());
+
+    
 }
 
 void UCameraCaptureManager::MakeRTPSshot()

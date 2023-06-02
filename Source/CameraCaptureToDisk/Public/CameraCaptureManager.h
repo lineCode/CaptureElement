@@ -69,9 +69,9 @@ public:
 
     TQueue<TArray64<uint8>> ImagesToStream;
 
+    UAsyncRTSPserver* RTSPserver = nullptr;
     TUniquePtr<AME::AsyncSaveScreenShotmaker> ScreenShotmaker;
-    TUniquePtr<AME::AsyncRTSPserver> RTPSmaker;
-    AME::AsyncRTSPframeSender* FrameSender;
+    TUniquePtr<AME::AsyncRTSPframeSender> FrameSender;
     TUniquePtr<AME::AsyncVideomaker> Videomaker;
 
     int FrameWidth;

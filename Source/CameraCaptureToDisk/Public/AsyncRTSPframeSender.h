@@ -12,20 +12,22 @@ namespace AME
 class AME::AsyncRTSPframeSender : public AME::IAsync
 {
 public:
-    explicit AsyncRTSPframeSender(std::shared_ptr<xop::RtspServer> server, xop::MediaSessionId session_id, UCameraCaptureManager* manager);
-    virtual ~AsyncRTSPframeSender() override = default;
+    explicit AsyncRTSPframeSender();
+    virtual ~AsyncRTSPframeSender() override;
 
 public:
     virtual bool Init() override; // Do your setup here, allocate memory, ect.
     virtual uint32 Run() override; // Main data processing happens here
     virtual void Stop() override; // Clean up any memory you allocated here
 
+    void InitVars(std::shared_ptr<xop::RtspServer> server, xop::MediaSessionId& session_id);
+
     volatile bool bRecord = false;
 
 protected:
     std::shared_ptr<xop::RtspServer> Server;
-
     xop::MediaSessionId Session_id;
+
     FRunnableThread* Thread;
 
     ISVCEncoder* encoder_ = nullptr;
