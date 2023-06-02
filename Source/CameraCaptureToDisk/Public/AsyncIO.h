@@ -2,9 +2,11 @@
 
 #include "HAL/Runnable.h"
 #include "Containers/Array.h"
+#include "Containers/Queue.h"
 #include <queue>
 #include <condition_variable>
 #include <mutex>
+#include <atomic>
 
 #include "PreOpenCVHeaders.h"
 #include "OpenCVHelper.h"
@@ -28,8 +30,8 @@ public:
 	explicit IAsync() = default;
 	virtual ~IAsync() override;
 
-	std::queue<TArray64<uint8>> ImageQueue {};
-	volatile bool bStop = false;
+	TQueue<TArray64<uint8>> ImageQueue {};
+	std::atomic<bool> bStop;
 
 	virtual bool Init() override; // Do your setup here, allocate memory, ect. 
 	virtual uint32 Run() override = 0;  // Main data processing happens here
@@ -38,7 +40,7 @@ public:
 	std::condition_variable cv;
 
 protected:
-	FRunnableThread* Thread;
+	FRunnableThread* Thread = nullptr;
 	FString FileName = "";
 	cv::Mat rawImage;
 	std::mutex mutex;

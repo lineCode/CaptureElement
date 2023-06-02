@@ -7,7 +7,6 @@
 #include <ctime>
 #include <map>
 #include <forward_list>
-#include "net/Logger.h"
 #include "net/SocketUtil.h"
 
 using namespace xop;

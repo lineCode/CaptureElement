@@ -22,7 +22,7 @@ public:
 
     void InitVars(std::shared_ptr<xop::RtspServer> server, xop::MediaSessionId& session_id);
 
-    volatile bool bRecord = false;
+    std::atomic<bool> bRecord;
 
 protected:
     std::shared_ptr<xop::RtspServer> Server;

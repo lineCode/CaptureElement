@@ -22,5 +22,6 @@ public:
 
 protected:
     cv::VideoWriter video_;
-    volatile bool bRecord = false;
+    std::atomic<bool> bRecord;
+    std::mutex VideoWriter;
 };

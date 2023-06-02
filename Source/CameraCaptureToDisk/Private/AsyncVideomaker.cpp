@@ -2,6 +2,8 @@
 
 AME::AsyncVideomaker::AsyncVideomaker()
 {
+    bRecord.store(false);
+
     Thread = FRunnableThread::Create(this, TEXT("AsyncVideomaker"));
 }
 
@@ -13,16 +15,17 @@ AME::AsyncVideomaker::~AsyncVideomaker()
         // Hopefully that doesn't take too long
         Thread->Kill();
         Thread->WaitForCompletion();
-        //delete Thread;
+        delete Thread;
     }
 }
 
 void AME::AsyncVideomaker::InitRecorder(bool state)
 {
+    std::unique_lock<std::mutex> lockWriter(VideoWriter);
+
     if (state)
     {
-        if (video_.isOpened())
-            video_.release();
+        bRecord.store(false);
 
         int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
         double fps = 55.0;
@@ -33,22 +36,18 @@ void AME::AsyncVideomaker::InitRecorder(bool state)
         bool status = video_.open(std::string(TCHAR_TO_UTF8(*FileName)), codec, fps, cv::Size(1280, 720));
         UE_LOG(LogTemp, Warning, TEXT("video file path: %s"), *FileName);
 
-        bRecord = true;
+        bRecord.store(true);
 
         cv.notify_one();
     }
     else
     {
-        bRecord = false;
+        bRecord.store(false);
 
         if (video_.isOpened())
             video_.release();
 
-        if (!ImageQueue.empty())
-        {
-            decltype(ImageQueue) empty{};
-            std::swap(ImageQueue, empty);
-        }
+        ImageQueue.Empty();
     }
 }
 
@@ -59,7 +58,7 @@ bool AME::AsyncVideomaker::Init()
 
 void AME::AsyncVideomaker::Stop()
 {
-    bRecord = false;
+    bRecord.store(false);
     InitRecorder(false);
 
     AME::IAsync::Stop();
@@ -68,22 +67,28 @@ void AME::AsyncVideomaker::Stop()
 uint32 AME::AsyncVideomaker::Run()
 {
     std::unique_lock<std::mutex> lock(mutex);
+    TArray64<uint8> img;
 
-    while (!bStop)
+    while (!bStop.load())
     {
-        if (bRecord)
+        if (bRecord.load())
         {
-            if (!ImageQueue.empty() && video_.isOpened())
+            if (!ImageQueue.IsEmpty())
             {
-                RGBAtoRGB(ImageQueue.front(), rawImage);
-                ImageQueue.pop();
+                ImageQueue.Peek(img);
+                RGBAtoRGB(img, rawImage);
+                ImageQueue.Pop();
 
-                video_.write(rawImage);
+                std::unique_lock<std::mutex> lockWriter(VideoWriter);
+                if (video_.isOpened())
+                {
+                    video_.write(rawImage);
+                }
             }
         }
         else
         {
-            cv.wait(lock, [this] {return bStop || bRecord; });
+            cv.wait(lock, [this] {return bStop.load() || bRecord.load(); });
         }
     }
     return 0;

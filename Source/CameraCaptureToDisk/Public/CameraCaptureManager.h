@@ -13,6 +13,8 @@
 
 #include <codec_api.h>
 
+#include "Engine/TextureRenderTarget2D.h"
+#include "Components/SceneCaptureComponent2D.h"
 #include "Components/SceneComponent.h"
 #include "CoreMinimal.h"
 #include "Containers/Queue.h"

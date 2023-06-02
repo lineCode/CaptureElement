@@ -14,7 +14,7 @@ AME::AsyncSaveScreenShotmaker::~AsyncSaveScreenShotmaker()
         // Hopefully that doesn't take too long
         Thread->Kill();
         Thread->WaitForCompletion();
-        //delete Thread;
+        delete Thread;
     }
 }
 
@@ -31,18 +31,20 @@ void AME::AsyncSaveScreenShotmaker::Stop()
 uint32 AME::AsyncSaveScreenShotmaker::Run()
 {
     std::unique_lock<std::mutex> lock(mutex);
+    TArray64<uint8> img;
 
-    while (!bStop)
+    while (!bStop.load())
     {
-        cv.wait(lock, [this] {return !ImageQueue.empty() || bStop;});
+        cv.wait(lock, [this] {return !ImageQueue.IsEmpty() || bStop.load();});
 
-        if (!ImageQueue.empty())
+        if (!ImageQueue.IsEmpty())
         {
             //Generate image name
             FileName = FileNameWithLeadingZeros("img_", ".png");
 
-            RGBAtoRGB(ImageQueue.front(), rawImage);
-            ImageQueue.pop();
+            ImageQueue.Peek(img);
+            RGBAtoRGB(img, rawImage);
+            ImageQueue.Pop();
 
             cv::imwrite(TCHAR_TO_ANSI(*FileName), rawImage);
         }

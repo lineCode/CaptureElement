@@ -1,7 +1,6 @@
 #include "Acceptor.h"
 #include "EventLoop.h"
 #include "SocketUtil.h"
-#include "Logger.h"
 
 using namespace xop;
 

@@ -2,7 +2,7 @@
 
 AME::IAsync::~IAsync()
 {
-    
+    bStop.store(false);
 }
 
 bool AME::IAsync::Init()
@@ -13,7 +13,7 @@ bool AME::IAsync::Init()
 
 void AME::IAsync::Stop()
 {
-    bStop = true;
+    bStop.store(true);
     cv.notify_one();
 }
 

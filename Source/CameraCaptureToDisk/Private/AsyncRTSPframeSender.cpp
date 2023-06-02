@@ -2,6 +2,7 @@
 
 AME::AsyncRTSPframeSender::AsyncRTSPframeSender()
 {
+    bRecord.store(false);
     Thread = FRunnableThread::Create(this, TEXT("AsyncRTSPframeSender"));
 }
 
@@ -13,7 +14,7 @@ AME::AsyncRTSPframeSender::~AsyncRTSPframeSender()
         // Hopefully that doesn't take too long
         Thread->Kill();
         Thread->WaitForCompletion();
-        //delete Thread;
+        delete Thread;
     }
 }
 
@@ -45,27 +46,29 @@ bool AME::AsyncRTSPframeSender::Init()
 
 void AME::AsyncRTSPframeSender::Stop()
 {
-    bRecord = false;
+    bRecord.store(false);
     AME::IAsync::Stop();
 }
 
 uint32 AME::AsyncRTSPframeSender::Run()
 {
     std::unique_lock<std::mutex> lock(mutex);
+    TArray64<uint8> img;
 
-    while (!bStop)
+    while (!bStop.load())
     {
-        if (bRecord)
+        if (bRecord.load())
         {
-            if (!ImageQueue.empty())
+            if (!ImageQueue.IsEmpty())
             {
-                RGBAtoRGB(ImageQueue.front(), rawImage);
-                ImageQueue.pop();
+                ImageQueue.Peek(img);
+                RGBAtoRGB(img, rawImage);
+                ImageQueue.Pop();
             }
 
             rv = WelsCreateSVCEncoder(&encoder_);
             encoder_->Initialize(&param);
-
+            
             cv::cvtColor(rawImage, imageYuv, cv::COLOR_BGR2YUV);
             cv::split(imageYuv, imageYuvCh);
             cv::resize(imageYuv, imageYuvMini, cv::Size(FrameWidth / 2, FrameHeight / 2));
@@ -84,7 +87,7 @@ uint32 AME::AsyncRTSPframeSender::Run()
                 continue;
             }
 
-            if (info.eFrameType != videoFrameTypeSkip /*&& cbk != nullptr*/)
+            if (info.eFrameType != videoFrameTypeSkip)
             {
                 //output bitstream
                 for (int iLayer = 0; iLayer < info.iLayerNum; iLayer++)
@@ -107,11 +110,11 @@ uint32 AME::AsyncRTSPframeSender::Run()
                     videoFrame.buffer.reset(new uint8_t[videoFrame.size]);
                     memcpy(videoFrame.buffer.get(), outBuf, videoFrame.size);
 
-                    if (!bStop)
+                    if (!bStop.load())
                         Server.get()->PushFrame(Session_id, xop::channel_0, videoFrame);
                 }
             }
-
+            
             if (encoder_)
             {
                 encoder_->Uninitialize();
@@ -120,19 +123,9 @@ uint32 AME::AsyncRTSPframeSender::Run()
         }
         else
         {
-            if (encoder_)
-            {
-                encoder_->Uninitialize();
-                WelsDestroySVCEncoder(encoder_);
-            }
-
-            if (!ImageQueue.empty())
-            {
-                decltype(ImageQueue) empty{};
-                std::swap(ImageQueue, empty);
-            }
-
-            cv.wait(lock, [this] {return bStop || bRecord; });
+            ImageQueue.Empty();
+           
+            cv.wait(lock, [this] {return bStop.load() || bRecord.load(); });
         }
     }
 

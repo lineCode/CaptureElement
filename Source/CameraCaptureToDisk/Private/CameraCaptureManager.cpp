@@ -82,7 +82,7 @@ void UCameraCaptureManager::TickComponent(float DeltaTime, ELevelTick TickType, 
 
                 if (ScreenShotmaker.Get())
                 {
-                    ScreenShotmaker.Get()->ImageQueue.push(ImgData2);
+                    ScreenShotmaker.Get()->ImageQueue.Enqueue(ImgData2);
                     ScreenShotmaker.Get()->cv.notify_one();
                 }
 
@@ -117,11 +117,11 @@ void UCameraCaptureManager::TickComponent(float DeltaTime, ELevelTick TickType, 
                     RTPSimageWrapper->GetRaw(ERGBFormat::BGRA, 8, ImgData2);
 
                     if (FrameSender && bMakeRTPS)
-                        FrameSender->ImageQueue.push(ImgData2);
+                        FrameSender->ImageQueue.Enqueue(ImgData2);
 
                     if (Videomaker.Get() && bVideoRecord)
                     {
-                        Videomaker.Get()->ImageQueue.push(ImgData2);
+                        Videomaker.Get()->ImageQueue.Enqueue(ImgData2);
                     }
 
                     // Delete the first element from RenderQueue
@@ -150,7 +150,7 @@ void UCameraCaptureManager::StartRTPS(bool bState)
 
     if (FrameSender)
     {
-        FrameSender->bRecord = bState;
+        FrameSender->bRecord.store(bState);
         FrameSender->cv.notify_one();
     }
 }
